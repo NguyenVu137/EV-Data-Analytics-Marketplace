@@ -1,0 +1,16 @@
+/* Dashboard Page Styles */
+.dashboard-container {
+  padding: 20px;
+  background-color: #f9f9f9;
+  min-height: 100vh;
+}
+
+.dashboard-container h1 {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.dashboard-container p {
+  font-size: 1.2rem;
+  color: #555;
+}
