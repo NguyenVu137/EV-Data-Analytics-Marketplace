@@ -121,7 +121,16 @@ const DatasetExplorer = () => {
             {/* Filters */}
             <form onSubmit={handleSearch} className="filters-form">
                 <div className="filters-grid">
-                    {/* Thời gian range đã loại bỏ để tránh lỗi backend */}
+                    {/* Thời gian */}
+                    <div className="filter-item">
+                        <label>Thời gian:</label>
+                        <input
+                            type="text"
+                            name="timeRange"
+                            value={filters.timeRange}
+                            onChange={handleFilterChange}
+                        />
+                    </div>
                     {/* Khu vực */}
                     <div className="filter-item">
                         <label>Khu vực:</label>
