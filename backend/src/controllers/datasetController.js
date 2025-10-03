@@ -96,6 +96,7 @@ exports.getDatasetDetails = async (req, res) => {
             },
             include: [{
                 model: User,
+                as: 'Provider',
                 attributes: ['name', 'email'],
                 where: {
                     role: 'provider'
