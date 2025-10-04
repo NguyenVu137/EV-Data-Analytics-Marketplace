@@ -1,3 +1,5 @@
+
+
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -6,21 +8,24 @@ const sequelize = require("./config/database");
 
 const app = express();
 
-app.use(cors());
+// CORS middleware - đặt trước tất cả các middleware khác
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true,
+}));
+
+// Đảm bảo nhận đúng JSON body trước khi khai báo route AI
+app.use(express.json());
 
 // Log tất cả các requests
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`, req.body);
   next();
 });
-app.use(express.json());
-
-// Routes
-app.get("/", (req, res) => {
-  res.send("EV Data Analytics Marketplace Backend is running 🚀");
-});
 
 // Import routes
+const aiRoutes = require('./routes/aiRoutes');
+app.use('/api/ai', aiRoutes);
 const seedRoutes = require('./routes/seedRoutes');
 app.use('/api/seed', seedRoutes);
 
@@ -40,17 +45,21 @@ sequelize.sync({ alter: true })  // tạo bảng nếu chưa có
   })
   .catch(err => console.error("❌ Sync error:", err));
 
-  const authRoutes = require("./routes/authRoutes");
+const authRoutes = require("./routes/authRoutes");
 app.use("/auth", authRoutes);
 
 const datasetRoutes = require("./routes/datasetRoutes");
 app.use("/api/datasets", datasetRoutes);
-app.use("/api/datasets", datasetRoutes);
 
 const userRoutes = require("./routes/userRoutes");
 app.use("/users", userRoutes);
+
 const transactionRoutes = require("./routes/transactionRoutes");
 app.use("/api/transactions", transactionRoutes);
+
+// Thêm route analytics cho dashboard
+const analyticsRoutes = require("./routes/analyticsRoutes");
+app.use("/api/analytics", analyticsRoutes);
 
 const PORT = process.env.PORT || 5000;
 

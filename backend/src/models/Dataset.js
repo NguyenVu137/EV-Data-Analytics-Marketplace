@@ -3,6 +3,11 @@ const sequelize = require("../config/database");
 const User = require("./User");
 
 const Dataset = sequelize.define("Dataset", {
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  },
   title: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -32,7 +37,7 @@ const Dataset = sequelize.define("Dataset", {
     allowNull: true,
   },
   dataFormat: {
-    type: DataTypes.ENUM('raw', 'analyzed', 'dashboard', 'api'),
+    type: DataTypes.STRING,
     allowNull: false,
     defaultValue: 'raw'
   },

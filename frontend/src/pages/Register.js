@@ -13,6 +13,7 @@ const Register = () => {
     password: "",
     role: "consumer" // Auto set role là consumer
   });
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -24,16 +25,13 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+    setLoading(true);
     try {
-      console.log('Form data:', formData);
-      console.log('Backend URL:', config.backendUrl);
-      
       if (!formData.name || !formData.email || !formData.password) {
         setError('Vui lòng điền đầy đủ thông tin');
+        setLoading(false);
         return;
       }
-
       const response = await axios.post(`${config.backendUrl}/auth/register`, formData, {
         headers: {
           'Content-Type': 'application/json',
@@ -42,14 +40,14 @@ const Register = () => {
         timeout: 5000,
       });
       console.log('Register successful:', response.data);
-      // Chuyển hướng đến trang đăng nhập sau khi đăng ký thành công
       navigate('/login');
     } catch (err) {
-      console.log('Full error:', err);
-      console.log('Error response:', err.response);
-      console.log('Error message:', err.message);
       setError(err.response?.data?.message || 'Registration failed: ' + err.message);
       console.error('Register error:', err.response?.data || err.message);
+    } finally {
+      setTimeout(() => {
+        setLoading(false);
+      }, 500); // Delay 0.5s before stopping loading
     }
   };
 
@@ -78,7 +76,7 @@ const Register = () => {
             name="email" 
             value={formData.email} 
             onChange={handleChange} 
-            required 
+            required
           />
         </div>
         <div className="form-group">
@@ -93,11 +91,16 @@ const Register = () => {
             minLength="6"
           />
         </div>
-        <button type="submit">Register</button>
+        <button type="submit" disabled={loading}>Register</button>
         <p className="form-footer">
           Already have an account? <a href="/login">Login here</a>
         </p>
       </form>
+      {loading && (
+        <div className="loading-overlay">
+          <div className="loading-spinner"></div>
+        </div>
+      )}
     </div>
   );
 };

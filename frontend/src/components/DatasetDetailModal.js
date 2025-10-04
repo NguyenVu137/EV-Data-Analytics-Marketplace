@@ -1,15 +1,29 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import axios from 'axios';
 import config from '../config';
 import './DatasetDetailModal.css';
 
+import { useAuth } from '../contexts/AuthContext';
+
 const DatasetDetailModal = ({ datasetId, onClose }) => {
+  const { user, isLoggedIn } = useAuth();
   const [dataset, setDataset] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sampleRows, setSampleRows] = useState([]);
   const [columns, setColumns] = useState([]);
   const [socData, setSocData] = useState([]);
+  const [hasPurchased, setHasPurchased] = useState(false);
+  // Kiểm tra trạng thái đã mua/thuê
+  useEffect(() => {
+    if (!user || !datasetId) return;
+    axios.get(`${config.backendUrl}/api/transactions/consumer/${user.id}`)
+      .then(res => {
+        if (Array.isArray(res.data)) {
+          setHasPurchased(res.data.some(tr => tr.datasetId === datasetId && tr.status === 'completed'));
+        }
+      });
+  }, [user, datasetId]);
 
   useEffect(() => {
     if (datasetId) fetchDetails();
@@ -79,6 +93,48 @@ const DatasetDetailModal = ({ datasetId, onClose }) => {
               <div><b>Data Format:</b> {dataset.dataFormat}</div>
               <div><b>Time Range:</b> {dataset.timeRange?.start} - {dataset.timeRange?.end}</div>
               <div><b>Anonymization:</b> {dataset.isAnonymized ? 'Đã ẩn danh' : 'Không ẩn danh'}</div>
+              <div><b>Giá:</b> {dataset.price ? `${dataset.price}₫` : 'Miễn phí'} ({dataset.pricingType === 'per_download' ? 'Mua/lượt tải' : dataset.pricingType === 'subscription' ? 'Thuê bao' : 'API'})</div>
+            </div>
+            <div style={{margin: '16px 0'}}>
+              {!isLoggedIn && (
+                <div style={{color: 'red'}}>Vui lòng đăng nhập để mua/thuê/đăng ký gói dữ liệu.</div>
+              )}
+              {isLoggedIn && hasPurchased && (
+                <div style={{color: 'green', fontWeight: 'bold'}}>Bạn đã mua/thuê gói dữ liệu này.</div>
+              )}
+              {isLoggedIn && !hasPurchased && dataset.pricingType === 'per_download' && (
+                <button className="buy-btn" onClick={async () => {
+                  try {
+                    await axios.post(`${config.backendUrl}/api/transactions`, { consumerId: user.id, datasetId: dataset.id });
+                    alert('Mua/lượt tải thành công!');
+                    setHasPurchased(true);
+                  } catch (e) {
+                    alert('Có lỗi khi mua/lượt tải!');
+                  }
+                }}>Mua/Lượt tải</button>
+              )}
+              {isLoggedIn && !hasPurchased && dataset.pricingType === 'subscription' && (
+                <button className="subscribe-btn" onClick={async () => {
+                  try {
+                    await axios.post(`${config.backendUrl}/api/transactions`, { consumerId: user.id, datasetId: dataset.id });
+                    alert('Thuê bao thành công!');
+                    setHasPurchased(true);
+                  } catch (e) {
+                    alert('Có lỗi khi thuê bao!');
+                  }
+                }}>Thuê bao</button>
+              )}
+              {isLoggedIn && !hasPurchased && dataset.pricingType === 'api_access' && (
+                <button className="api-btn" onClick={async () => {
+                  try {
+                    await axios.post(`${config.backendUrl}/api/transactions`, { consumerId: user.id, datasetId: dataset.id });
+                    alert('Đăng ký API thành công!');
+                    setHasPurchased(true);
+                  } catch (e) {
+                    alert('Có lỗi khi đăng ký API!');
+                  }
+                }}>Đăng ký API</button>
+              )}
             </div>
             <h3>Schema (Cột dữ liệu)</h3>
             <table className="schema-table">

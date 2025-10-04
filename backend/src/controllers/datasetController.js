@@ -11,8 +11,10 @@ exports.searchDatasets = async (req, res) => {
             vehicleType,
             batteryType,
             dataFormat,
-            timeRange,
             searchTerm,
+            dateFrom,
+            dateTo,
+            sortBy = 'newest',
             page = 1,
             limit = 10
         } = req.query;
@@ -43,9 +45,24 @@ exports.searchDatasets = async (req, res) => {
                 { description: { [Op.like]: `%${searchTerm}%` } }
             ];
         }
+        // Lọc theo ngày đăng tải (createdAt)
+        if (dateFrom && dateFrom !== '') {
+            whereConditions.createdAt = { ...(whereConditions.createdAt || {}), [Op.gte]: new Date(dateFrom) };
+        }
+        if (dateTo && dateTo !== '') {
+            whereConditions.createdAt = { ...(whereConditions.createdAt || {}), [Op.lte]: new Date(dateTo + 'T23:59:59.999Z') };
+        }
 
         // Phân trang
         const offset = (page - 1) * limit;
+
+        // Xác định thứ tự sắp xếp
+        let order = [['createdAt', 'DESC']];
+        if (sortBy === 'oldest') {
+            order = [['createdAt', 'ASC']];
+        } else if (sortBy === 'newest') {
+            order = [['createdAt', 'DESC']];
+        }
 
         // Thực hiện tìm kiếm
         const datasets = await Dataset.findAndCountAll({
@@ -57,7 +74,7 @@ exports.searchDatasets = async (req, res) => {
             }],
             limit: parseInt(limit),
             offset: parseInt(offset),
-            order: [['createdAt', 'DESC']]
+            order
         });
 
         // Tính toán thông tin phân trang
