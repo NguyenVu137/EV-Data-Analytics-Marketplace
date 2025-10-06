@@ -3,11 +3,15 @@ const router = express.Router();
 const Dataset = require('../models/Dataset');
 const datasetController = require('../controllers/datasetController');
 const { authenticateToken } = require('../middleware/auth');
+const checkEntitlement = require('../middleware/entitlement');
 
 // Consumer Routes - Tìm kiếm và khám phá dữ liệu
 router.get('/search', datasetController.searchDatasets); // Public route
 router.get('/categories', datasetController.getCategories); // Public route
 router.get('/:id', datasetController.getDatasetDetails); // Public route
+
+// Download dataset (cần entitlement)
+router.get('/download/:datasetId', authenticateToken, checkEntitlement, datasetController.downloadDataset);
 
 // Provider Routes - Quản lý dataset
 router.post("/", authenticateToken, async (req, res) => {

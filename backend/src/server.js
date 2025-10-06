@@ -1,5 +1,3 @@
-
-
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -60,6 +58,9 @@ app.use("/api/transactions", transactionRoutes);
 // Thêm route analytics cho dashboard
 const analyticsRoutes = require("./routes/analyticsRoutes");
 app.use("/api/analytics", analyticsRoutes);
+
+const apiAccessRoutes = require('./routes/apiAccessRoutes');
+app.use('/api', apiAccessRoutes);
 
 const PORT = process.env.PORT || 5000;
 

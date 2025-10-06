@@ -15,6 +15,28 @@ const Dataset = sequelize.define("Dataset", {
   description: {
     type: DataTypes.TEXT,
   },
+  // Loại dataset: raw, processed
+  type: {
+    type: DataTypes.ENUM('raw', 'processed'),
+    allowNull: false,
+    defaultValue: 'raw'
+  },
+  // Pricing cho từng loại
+  pricingRaw: { type: DataTypes.FLOAT }, // Giá mua lẻ bản raw
+  pricingProcessed: { type: DataTypes.FLOAT }, // Giá mua lẻ bản processed
+  pricingSubscription: { type: DataTypes.FLOAT }, // Giá thuê bao/tháng
+  pricingAPI: { type: DataTypes.FLOAT }, // Giá API per 1000 requests hoặc per GB
+  // Metadata bổ sung
+  sizeBytes: { type: DataTypes.BIGINT },
+  numRecords: { type: DataTypes.BIGINT },
+  license: { type: DataTypes.STRING },
+  provider: { type: DataTypes.STRING },
+  sampleFile: { type: DataTypes.STRING }, // Đường dẫn file sample
+  samplePreview: { type: DataTypes.JSON }, // 30-100 dòng sample preview
+  dataFields: { type: DataTypes.JSON }, // Schema: [{name, type, description, unit}]
+  lastUpdated: { type: DataTypes.DATE },
+  updateFrequency: { type: DataTypes.STRING },
+  // Trường cũ để tương thích
   price: {
     type: DataTypes.FLOAT,
     allowNull: false,

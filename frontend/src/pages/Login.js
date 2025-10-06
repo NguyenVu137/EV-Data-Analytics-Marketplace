@@ -4,6 +4,7 @@ import "./Login.css";
 import config from '../config';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import { GoogleLogin } from '@react-oauth/google';
 
 const Login = () => {
   const [error, setError] = useState('');
@@ -35,6 +36,33 @@ const Login = () => {
     }
   };
 
+  // Xử lý đăng nhập bằng Google
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await axios.post(`${config.backendUrl}/auth/google`, {
+        credential: credentialResponse.credential
+      });
+      // Lưu token vào context
+      authLogin(response.data.token, null);
+      navigate('/dashboard');
+    } catch (err) {
+      if (err.response?.status === 404) {
+        setError('Tài khoản Google này chưa đăng ký. Vui lòng đăng ký trước.');
+        setTimeout(() => navigate('/register'), 2000);
+      } else {
+        setError(err.response?.data?.message || 'Google đăng nhập thất bại: ' + err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setError('Đăng nhập bằng Google thất bại.');
+  };
+
   return (
     <div className="login-container">
       <form className="login-form" onSubmit={handleSubmit}>
@@ -48,9 +76,20 @@ const Login = () => {
           <label htmlFor="password">Password:</label>
           <input type="password" id="password" name="password" required />
         </div>
-  <button type="submit" disabled={loading}>Login</button>
+        <button type="submit" disabled={loading}>Login</button>
+        <div style={{ textAlign: 'center', margin: '16px 0' }}>Hoặc</div>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleError}
+            width="100%"
+            locale="vi"
+            text="signin_with"
+          />
+        </div>
         <p className="form-footer">
-          Don't have an account? <a href="/register">Register here</a>
+          Don't have an account? <a href="/register">Register here</a><br />
+          <a href="/forgot-password">Quên mật khẩu?</a>
         </p>
       </form>
       {loading && (
@@ -59,7 +98,6 @@ const Login = () => {
         </div>
       )}
     </div>
-/* Thêm CSS cho loading overlay và spinner */
   );
 };
 

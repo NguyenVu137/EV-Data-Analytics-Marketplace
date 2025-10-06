@@ -1,3 +1,24 @@
+const path = require('path');
+// Download dataset file (sau khi đã kiểm tra entitlement)
+exports.downloadDataset = async (req, res) => {
+    try {
+        const { datasetId } = req.params;
+        const dataset = await Dataset.findByPk(datasetId);
+        if (!dataset || !dataset.fileUrl) {
+            return res.status(404).json({ status: 'error', message: 'Dataset or file not found' });
+        }
+        // Đường dẫn tuyệt đối tới file (giả sử fileUrl là đường dẫn tương đối từ thư mục gốc dự án)
+        const filePath = path.isAbsolute(dataset.fileUrl)
+            ? dataset.fileUrl
+            : path.join(__dirname, '../../', dataset.fileUrl);
+        // Tăng download count
+        dataset.downloadCount = (dataset.downloadCount || 0) + 1;
+        await dataset.save();
+        return res.download(filePath, path.basename(filePath));
+    } catch (err) {
+        return res.status(500).json({ status: 'error', message: 'Download failed', error: err.message });
+    }
+};
 const { Op } = require('sequelize');
 const Dataset = require('../models/Dataset');
 const User = require('../models/User');
@@ -24,20 +45,46 @@ exports.searchDatasets = async (req, res) => {
             status: 'approved', // Chỉ lấy các dataset đã được duyệt
         };
 
+        // Multi-select filter hỗ trợ mảng hoặc chuỗi
+        const { Op } = require('sequelize');
+        // Helper ép về mảng nếu là string
+        function toArray(val) {
+            if (Array.isArray(val)) return val;
+            if (typeof val === 'string') {
+                if (val.includes(',')) return val.split(',').map(s => s.trim()).filter(Boolean);
+                return [val];
+            }
+            return [];
+        }
         if (dataCategory && dataCategory !== '' && dataCategory !== 'Tất cả') {
-            whereConditions.dataCategory = dataCategory;
+            const arr = toArray(dataCategory);
+            if (arr.length > 0) {
+                whereConditions.dataCategory = { [Op.in]: arr };
+            }
         }
         if (region && region !== '' && region !== 'Tất cả') {
-            whereConditions.region = region.trim();
+            const arr = toArray(region);
+            if (arr.length > 0) {
+                whereConditions.region = { [Op.in]: arr };
+            }
         }
         if (vehicleType && vehicleType !== '' && vehicleType !== 'Tất cả') {
-            whereConditions.vehicleType = vehicleType.trim();
+            const arr = toArray(vehicleType);
+            if (arr.length > 0) {
+                whereConditions.vehicleType = { [Op.in]: arr };
+            }
         }
         if (batteryType && batteryType !== '' && batteryType !== 'Tất cả') {
-            whereConditions.batteryType = batteryType.trim();
+            const arr = toArray(batteryType);
+            if (arr.length > 0) {
+                whereConditions.batteryType = { [Op.in]: arr };
+            }
         }
         if (dataFormat && dataFormat !== '' && dataFormat !== 'Tất cả') {
-            whereConditions.dataFormat = dataFormat.trim();
+            const arr = toArray(dataFormat);
+            if (arr.length > 0) {
+                whereConditions.dataFormat = { [Op.in]: arr };
+            }
         }
         if (searchTerm && searchTerm !== '') {
             whereConditions[Op.or] = [

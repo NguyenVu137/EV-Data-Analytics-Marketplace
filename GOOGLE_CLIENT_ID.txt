@@ -1,0 +1,8 @@
+Hãy truy cập https://console.cloud.google.com/apis/credentials, tạo OAuth 2.0 Client ID cho Web Application, copy client ID và dán vào:
+
+- frontend/src/index.js (GoogleOAuthProvider clientId)
+- backend/.env (GOOGLE_CLIENT_ID)
+
+Ví dụ: 1234567890-abcxyz1234567890.apps.googleusercontent.com
+
+Sau đó khởi động lại backend và reload frontend để Google OAuth hoạt động đúng.

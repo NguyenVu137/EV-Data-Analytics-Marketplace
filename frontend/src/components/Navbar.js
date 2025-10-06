@@ -31,6 +31,7 @@ const Navbar = () => {
           <>
             {userEmail && <span className="navbar-user">{userEmail}</span>}
             <Link to="/dashboard" className="nav-link">Dashboard</Link>
+            <Link to="/transactions" className="nav-link">Giao dịch</Link>
             <Link to="/analytics" className="nav-link">Analytics</Link>
             <button onClick={handleLogout} className="nav-button">Logout</button>
           </>

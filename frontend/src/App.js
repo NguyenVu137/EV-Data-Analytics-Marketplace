@@ -8,6 +8,13 @@ import Dashboard from "./pages/Dashboard";
 import DatasetExplorer from "./pages/DatasetExplorer";
 import PrivateRoute from "./components/PrivateRoute";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
+import PaymentPage from "./pages/PaymentPage";
+import TransactionHistory from "./pages/TransactionHistory";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
+import AccountSettings from "./pages/AccountSettings";
+import VerifyResetCode from "./pages/VerifyResetCode";
 
 function App() {
   return (
@@ -41,6 +48,13 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route path="/payment" element={<PrivateRoute><PaymentPage /></PrivateRoute>} />
+          <Route path="/transactions" element={<PrivateRoute><TransactionHistory /></PrivateRoute>} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/account" element={<PrivateRoute><AccountSettings /></PrivateRoute>} />
+          <Route path="/verify-reset-code" element={<VerifyResetCode />} />
           <Route path="/" element={<DatasetExplorer />} />
         </Routes>
       </Router>

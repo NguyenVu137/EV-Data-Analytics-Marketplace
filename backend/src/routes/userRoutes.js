@@ -1,7 +1,8 @@
 const express = require("express");
 const User = require("../models/User");
-
 const router = express.Router();
+const { getMe, updateMe, deleteMe } = require("../controllers/userController");
+const auth = require("../middleware/auth");
 
 // tạo user mới
 router.post("/", async (req, res) => {
@@ -23,5 +24,9 @@ router.get("/", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+router.get("/me", auth, getMe);
+router.put("/me", auth, updateMe);
+router.delete("/me", auth, deleteMe);
 
 module.exports = router;

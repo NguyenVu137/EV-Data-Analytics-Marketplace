@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import config from '../config';
 import './Login.css';
+import { GoogleLogin, googleLogout } from '@react-oauth/google';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -51,6 +52,33 @@ const Register = () => {
     }
   };
 
+  // Xử lý đăng ký bằng Google
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoading(true);
+    setError("");
+    try {
+      // Gửi credential lên backend để xác thực/tạo tài khoản
+      const response = await axios.post(`${config.backendUrl}/auth/google`, {
+        credential: credentialResponse.credential,
+        mode: 'register'
+      });
+      // Nếu backend trả về token, chuyển hướng sang dashboard hoặc login
+      navigate('/login');
+    } catch (err) {
+      if (err.response?.status === 400 || err.response?.status === 409) {
+        setError('Tài khoản Google này đã được đăng ký. Vui lòng đăng nhập.');
+      } else {
+        setError(err.response?.data?.message || 'Google signup failed: ' + err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setError('Đăng ký bằng Google thất bại.');
+  };
+
   return (
     <div className="login-container">
       <form className="login-form" onSubmit={handleSubmit}>
@@ -92,6 +120,16 @@ const Register = () => {
           />
         </div>
         <button type="submit" disabled={loading}>Register</button>
+        <div style={{ textAlign: 'center', margin: '16px 0' }}>Hoặc</div>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleError}
+            width="100%"
+            locale="vi"
+            text="signup_with"
+          />
+        </div>
         <p className="form-footer">
           Already have an account? <a href="/login">Login here</a>
         </p>

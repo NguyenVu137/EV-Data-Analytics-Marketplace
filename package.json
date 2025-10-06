@@ -1,6 +1,9 @@
 {
   "dependencies": {
+    "google-auth-library": "^10.4.0",
     "jwt-decode": "^4.0.0",
-    "recharts": "^3.2.1"
+    "nodemailer": "^7.0.6",
+    "recharts": "^3.2.1",
+    "uuid": "^13.0.0"
   }
 }

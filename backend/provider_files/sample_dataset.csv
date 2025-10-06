@@ -1,0 +1,4 @@
+id,name,category,provider,price,description
+1,EV Charging Locations,Location,EVDataProvider,100,Dataset of EV charging station locations
+2,EV Battery Stats,Battery,EVDataProvider,150,Statistics on EV battery performance
+3,EV Sales Data,Sales,EVDataProvider,200,Monthly EV sales data by region

@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import config from '../config';
 import './DatasetDetailModal.css';
-
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const DatasetDetailModal = ({ datasetId, onClose }) => {
   const { user, isLoggedIn } = useAuth();
@@ -14,7 +14,8 @@ const DatasetDetailModal = ({ datasetId, onClose }) => {
   const [columns, setColumns] = useState([]);
   const [socData, setSocData] = useState([]);
   const [hasPurchased, setHasPurchased] = useState(false);
-  // Kiểm tra trạng thái đã mua/thuê
+  const navigate = useNavigate();
+
   useEffect(() => {
     if (!user || !datasetId) return;
     axios.get(`${config.backendUrl}/api/transactions/consumer/${user.id}`)
@@ -37,8 +38,6 @@ const DatasetDetailModal = ({ datasetId, onClose }) => {
       setDataset(res.data.data);
       // Giả lập sample CSV và schema nếu chưa có API thực tế
       if (res.data.data && res.data.data.fileUrl) {
-        // TODO: fetch sample CSV from backend if available
-        // Dưới đây là dữ liệu mẫu giả lập
         setColumns(['timestamp', 'vehicle_id', 'SoC', 'location', 'speed']);
         setSampleRows([
           ['2023-01-01 08:00', 'EV001', 80, 'Hà Nội', 45],
@@ -87,13 +86,29 @@ const DatasetDetailModal = ({ datasetId, onClose }) => {
             <p>{dataset.description}</p>
             <div className="meta">
               <div><b>Provider:</b> {dataset.Provider?.name}</div>
-              <div><b>Region:</b> {dataset.region}</div>
-              <div><b>Vehicle Type:</b> {dataset.vehicleType}</div>
-              <div><b>Battery Type:</b> {dataset.batteryType}</div>
-              <div><b>Data Format:</b> {dataset.dataFormat}</div>
-              <div><b>Time Range:</b> {dataset.timeRange?.start} - {dataset.timeRange?.end}</div>
+              <div><b>Khu vực:</b> {dataset.region}</div>
+              <div><b>Loại xe:</b> {dataset.vehicleType}</div>
+              <div><b>Loại pin:</b> {dataset.batteryType}</div>
+              <div><b>Định dạng:</b> {dataset.dataFormat}</div>
+              <div><b>Loại dữ liệu:</b> {dataset.type === 'processed' ? 'Processed' : 'Raw'}</div>
+              <div><b>Ngày đăng tải:</b> {dataset.createdAt ? new Date(dataset.createdAt).toLocaleDateString() : ''}</div>
+              <div><b>Kích thước:</b> {dataset.sizeBytes ? `${(dataset.sizeBytes/1024/1024).toFixed(1)} MB` : ''}</div>
+              <div><b>Số bản ghi:</b> {dataset.numRecords || ''}</div>
               <div><b>Anonymization:</b> {dataset.isAnonymized ? 'Đã ẩn danh' : 'Không ẩn danh'}</div>
-              <div><b>Giá:</b> {dataset.price ? `${dataset.price}₫` : 'Miễn phí'} ({dataset.pricingType === 'per_download' ? 'Mua/lượt tải' : dataset.pricingType === 'subscription' ? 'Thuê bao' : 'API'})</div>
+              <div><b>License:</b> {dataset.license || 'N/A'}</div>
+              <div><b>Update frequency:</b> {dataset.updateFrequency || 'N/A'}</div>
+            </div>
+            <div className="pricing-table-modal">
+              <h4>Bảng giá</h4>
+              <table>
+                <thead><tr><th>Loại</th><th>Giá</th></tr></thead>
+                <tbody>
+                  {dataset.pricingRaw && <tr><td>Raw</td><td>{dataset.pricingRaw}₫</td></tr>}
+                  {dataset.pricingProcessed && <tr><td>Processed</td><td>{dataset.pricingProcessed}₫</td></tr>}
+                  {dataset.pricingSubscription && <tr><td>Subscription</td><td>{dataset.pricingSubscription}₫/tháng</td></tr>}
+                  {dataset.pricingAPI && <tr><td>API</td><td>{dataset.pricingAPI}₫/1000 requests</td></tr>}
+                </tbody>
+              </table>
             </div>
             <div style={{margin: '16px 0'}}>
               {!isLoggedIn && (
@@ -103,70 +118,90 @@ const DatasetDetailModal = ({ datasetId, onClose }) => {
                 <div style={{color: 'green', fontWeight: 'bold'}}>Bạn đã mua/thuê gói dữ liệu này.</div>
               )}
               {isLoggedIn && !hasPurchased && dataset.pricingType === 'per_download' && (
-                <button className="buy-btn" onClick={async () => {
-                  try {
-                    await axios.post(`${config.backendUrl}/api/transactions`, { consumerId: user.id, datasetId: dataset.id });
-                    alert('Mua/lượt tải thành công!');
-                    setHasPurchased(true);
-                  } catch (e) {
-                    alert('Có lỗi khi mua/lượt tải!');
-                  }
+                <button className="buy-btn" onClick={() => {
+                  navigate('/payment', { state: { dataset } });
                 }}>Mua/Lượt tải</button>
               )}
               {isLoggedIn && !hasPurchased && dataset.pricingType === 'subscription' && (
-                <button className="subscribe-btn" onClick={async () => {
-                  try {
-                    await axios.post(`${config.backendUrl}/api/transactions`, { consumerId: user.id, datasetId: dataset.id });
-                    alert('Thuê bao thành công!');
-                    setHasPurchased(true);
-                  } catch (e) {
-                    alert('Có lỗi khi thuê bao!');
-                  }
+                <button className="subscribe-btn" onClick={() => {
+                  navigate('/payment', { state: { dataset } });
                 }}>Thuê bao</button>
               )}
               {isLoggedIn && !hasPurchased && dataset.pricingType === 'api_access' && (
-                <button className="api-btn" onClick={async () => {
-                  try {
-                    await axios.post(`${config.backendUrl}/api/transactions`, { consumerId: user.id, datasetId: dataset.id });
-                    alert('Đăng ký API thành công!');
-                    setHasPurchased(true);
-                  } catch (e) {
-                    alert('Có lỗi khi đăng ký API!');
-                  }
+                <button className="api-btn" onClick={() => {
+                  navigate('/payment', { state: { dataset } });
                 }}>Đăng ký API</button>
               )}
             </div>
-            <h3>Schema (Cột dữ liệu)</h3>
+            <h3>Data Dictionary (Schema)</h3>
             <table className="schema-table">
               <thead>
                 <tr>
-                  {columns.map(col => <th key={col}>{col}</th>)}
+                  <th>Tên trường</th>
+                  <th>Kiểu</th>
+                  <th>Mô tả</th>
+                  <th>Đơn vị</th>
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  {columns.map(col => <td key={col}><i>Kiểu dữ liệu</i></td>)}
-                </tr>
+                {Array.isArray(dataset.dataFields) && dataset.dataFields.length > 0 ? dataset.dataFields.map((f, idx) => (
+                  <tr key={idx}>
+                    <td>{f.name}</td>
+                    <td>{f.type}</td>
+                    <td>{f.description}</td>
+                    <td>{f.unit}</td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan={4}><i>Chưa có schema mẫu</i></td></tr>
+                )}
               </tbody>
             </table>
-            <h3>Sample CSV (10 dòng)</h3>
+            <h3>Sample Preview</h3>
             <table className="sample-table">
               <thead>
                 <tr>
-                  {columns.map(col => <th key={col}>{col}</th>)}
+                  {Array.isArray(dataset.samplePreview) && dataset.samplePreview.length > 0
+                    ? Object.keys(dataset.samplePreview[0]).map(col => <th key={col}>{col}</th>)
+                    : columns.map(col => <th key={col}>{col}</th>)}
                 </tr>
               </thead>
               <tbody>
-                {sampleRows.map((row, idx) => (
-                  <tr key={idx}>
-                    {row.map((cell, i) => <td key={i}>{cell}</td>)}
-                  </tr>
-                ))}
+                {Array.isArray(dataset.samplePreview) && dataset.samplePreview.length > 0
+                  ? dataset.samplePreview.slice(0, 10).map((row, idx) => (
+                      <tr key={idx}>
+                        {Object.values(row).map((cell, i) => <td key={i}>{cell}</td>)}
+                      </tr>
+                    ))
+                  : sampleRows.map((row, idx) => (
+                      <tr key={idx}>
+                        {row.map((cell, i) => <td key={i}>{cell}</td>)}
+                      </tr>
+                    ))}
               </tbody>
             </table>
+            {isLoggedIn && hasPurchased && (
+              <div style={{marginTop: 16}}>
+                <button className="download-btn" onClick={async () => {
+                  try {
+                    const res = await fetch(`${config.backendUrl}/api/datasets/download/${dataset.id}`, {
+                      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    if (!res.ok) throw new Error('Download failed');
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = dataset.title ? dataset.title + '.csv' : 'dataset.csv';
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                  } catch (e) {
+                    alert('Không thể tải file. Vui lòng thử lại hoặc liên hệ hỗ trợ.');
+                  }
+                }}>Tải xuống</button>
+              </div>
+            )}
             <h3>Chart Preview (SoC Distribution)</h3>
             <div className="chart-preview">
-              {/* Simple bar chart using divs */}
               <div className="soc-bar-chart">
                 {socData.map((d, i) => (
                   <div key={i} className="bar" style={{height: `${d.count * 20}px`}}>
@@ -180,6 +215,7 @@ const DatasetDetailModal = ({ datasetId, onClose }) => {
       </div>
     </div>
   );
-};
+}
 
 export default DatasetDetailModal;
+

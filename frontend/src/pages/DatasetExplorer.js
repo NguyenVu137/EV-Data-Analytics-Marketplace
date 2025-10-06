@@ -10,7 +10,7 @@ import config from '../config';
 const regionOptions = ['', 'Hà Nội', 'TP.HCM', 'Toàn quốc', 'Đà Nẵng', 'Tất cả'];
 const vehicleTypeOptions = ['', 'EV Sedan', 'EV SUV', 'EV Truck', 'Tất cả'];
 const batteryTypeOptions = ['', 'Li-ion', 'LFP', 'Tất cả'];
-const dataFormatOptions = ['', 'CSV', 'Parquet', 'Timeseries', 'Tất cả'];
+// const dataFormatOptions = ['', 'CSV', 'Parquet', 'Timeseries', 'Tất cả'];
 const timeSortOptions = [
     { value: '', label: 'Tất cả' },
     { value: 'newest', label: 'Mới nhất' },
@@ -20,8 +20,8 @@ const timeSortOptions = [
 const DatasetExplorer = () => {
     const [datasets, setDatasets] = useState([]);
     const [selectedDatasetId, setSelectedDatasetId] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    // const [loading, setLoading] = useState(false);
+    // const [error, setError] = useState('');
     const [filters, setFilters] = useState({
         dataCategory: '',
         region: '',
@@ -39,6 +39,7 @@ const DatasetExplorer = () => {
         totalItems: 0,
         itemsPerPage: 10
     });
+    const itemsPerPageOptions = [5, 10, 20, 50, 100];
     // Removed unused purchase and categories state
 
     useEffect(() => {
@@ -48,8 +49,6 @@ const DatasetExplorer = () => {
 
     // Fetch datasets with filters and pagination
     const searchDatasets = async (page = 1) => {
-        setLoading(true);
-        setError('');
         try {
             const params = {
                 ...filters,
@@ -63,13 +62,11 @@ const DatasetExplorer = () => {
             } else {
                 setDatasets([]);
                 setPagination({ ...pagination, totalItems: 0, totalPages: 1 });
-                setError('Không tìm thấy dữ liệu phù hợp.');
+                // setError('Không tìm thấy dữ liệu phù hợp.');
             }
         } catch (err) {
-            setError('Lỗi khi tải dữ liệu.');
+            // setError('Lỗi khi tải dữ liệu.');
             setDatasets([]);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -78,7 +75,6 @@ const DatasetExplorer = () => {
         const { name, value } = e.target;
         setFilters(prev => {
             const newFilters = { ...prev, [name]: value };
-            // Nếu thay đổi sortBy thì tìm kiếm ngay
             if (name === 'sortBy') {
                 setTimeout(() => searchDatasets(1), 0);
             }
@@ -97,6 +93,13 @@ const DatasetExplorer = () => {
     const handlePageChange = (newPage) => {
         setPagination(prev => ({ ...prev, currentPage: newPage }));
         searchDatasets(newPage);
+    };
+
+    // Items per page change
+    const handleItemsPerPageChange = (e) => {
+        const newItemsPerPage = parseInt(e.target.value);
+        setPagination(prev => ({ ...prev, itemsPerPage: newItemsPerPage, currentPage: 1 }));
+        setTimeout(() => searchDatasets(1), 0);
     };
 
     // Quick filter for recent days
@@ -262,17 +265,46 @@ const DatasetExplorer = () => {
                 </div>
             </form>
 
-            {/* Dataset list and pagination */}
+            {/* Tổng số kết quả và chọn số lượng/trang */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '16px 0 8px 0' }}>
+                <div><b>Tổng số kết quả:</b> {pagination.totalItems}</div>
+                <div>
+                    <label htmlFor="itemsPerPage">Hiển thị/trang: </label>
+                    <select id="itemsPerPage" value={pagination.itemsPerPage} onChange={handleItemsPerPageChange}>
+                        {itemsPerPageOptions.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+            {/* Dataset list và phân trang */}
             <>
                 <div className="datasets-grid">
                     {datasets.map(ds => (
                         <div className="dataset-card" key={ds.id}>
+                            <div className="badge-row">
+                                <span className={`badge badge-type badge-${ds.type || ds.dataFormat}`}>{ds.type === 'processed' || ds.dataFormat === 'analyzed' ? 'Processed' : 'Raw'}</span>
+                                {ds.pricingSubscription && <span className="badge badge-sub">Subscription</span>}
+                                {ds.pricingAPI && <span className="badge badge-api">API</span>}
+                            </div>
                             <h3>{ds.title}</h3>
                             <div className="description">{ds.description}</div>
                             <div className="dataset-details">
                                 <span className="category">{ds.dataCategory}</span>
                                 <span className="format">{ds.dataFormat}</span>
-                                <span className="price">{ds.price ? `${ds.price}₫` : 'Miễn phí'}</span>
+                                <span className="size">{ds.sizeBytes ? `${(ds.sizeBytes/1024/1024).toFixed(1)} MB` : ''}</span>
+                                <span className="records">{ds.numRecords ? `${ds.numRecords} bản ghi` : ''}</span>
+                            </div>
+                            <div className="pricing-table">
+                                <table>
+                                    <thead><tr><th>Loại</th><th>Giá</th></tr></thead>
+                                    <tbody>
+                                        {ds.pricingRaw && <tr><td>Raw</td><td>{ds.pricingRaw}₫</td></tr>}
+                                        {ds.pricingProcessed && <tr><td>Processed</td><td>{ds.pricingProcessed}₫</td></tr>}
+                                        {ds.pricingSubscription && <tr><td>Subscription</td><td>{ds.pricingSubscription}₫/tháng</td></tr>}
+                                        {ds.pricingAPI && <tr><td>API</td><td>{ds.pricingAPI}₫/1000 requests</td></tr>}
+                                    </tbody>
+                                </table>
                             </div>
                             <div className="provider-info">
                                 <b>Provider:</b> {ds.Provider?.name || 'N/A'}<br />
@@ -284,12 +316,26 @@ const DatasetExplorer = () => {
                 </div>
                 {/* Pagination */}
                 {pagination.totalPages > 1 && (
-                    <div className="pagination">
+                    <div className="pagination" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16 }}>
                         <button onClick={() => handlePageChange(pagination.currentPage - 1)} disabled={pagination.currentPage === 1}>Trước</button>
-                        <span>Trang {pagination.currentPage} / {pagination.totalPages}</span>
+                        {getPageNumbers(pagination.currentPage, pagination.totalPages).map((page, idx) =>
+                            page === '...' ? (
+                                <span key={idx} style={{ padding: '0 6px' }}>...</span>
+                            ) : (
+                                <button
+                                    key={page}
+                                    onClick={() => handlePageChange(page)}
+                                    className={page === pagination.currentPage ? 'active' : ''}
+                                    style={{ fontWeight: page === pagination.currentPage ? 'bold' : 'normal', minWidth: 32 }}
+                                >
+                                    {page}
+                                </button>
+                            )
+                        )}
                         <button onClick={() => handlePageChange(pagination.currentPage + 1)} disabled={pagination.currentPage === pagination.totalPages}>Sau</button>
                     </div>
                 )}
+
             </>
 
             {/* Dataset Detail Modal */}
@@ -301,3 +347,25 @@ const DatasetExplorer = () => {
 };
 
 export default DatasetExplorer;
+
+// Helper: sinh dải số trang cho UX đẹp
+function getPageNumbers(current, total) {
+    const delta = 2;
+    const range = [];
+    for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
+        range.push(i);
+    }
+    if (range[0] > 2) {
+        range.unshift('...');
+    }
+    if (range[0] !== 1) {
+        range.unshift(1);
+    }
+    if (range[range.length - 1] < total - 1) {
+        range.push('...');
+    }
+    if (range[range.length - 1] !== total) {
+        range.push(total);
+    }
+    return range;
+}

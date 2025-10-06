@@ -1,14 +1,16 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import config from '../config';
-import { AuthContext } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
+import DatasetDetailModal from '../components/DatasetDetailModal';
 
 const TransactionHistory = () => {
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [selectedDatasetId, setSelectedDatasetId] = useState(null);
   useEffect(() => {
     if (!user) return;
     setLoading(true);
@@ -36,6 +38,7 @@ const TransactionHistory = () => {
             <th>Số tiền</th>
             <th>Trạng thái</th>
             <th>Ngày giao dịch</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -46,10 +49,18 @@ const TransactionHistory = () => {
               <td>{tr.amount}₫</td>
               <td>{tr.status === 'completed' ? 'Đã thanh toán' : 'Chờ xử lý'}</td>
               <td>{new Date(tr.createdAt).toLocaleString()}</td>
+              <td>
+                {tr.Dataset?.id && (
+                  <button onClick={() => setSelectedDatasetId(tr.Dataset.id)}>Xem chi tiết</button>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      {selectedDatasetId && (
+        <DatasetDetailModal datasetId={selectedDatasetId} onClose={() => setSelectedDatasetId(null)} />
+      )}
     </div>
   );
 };

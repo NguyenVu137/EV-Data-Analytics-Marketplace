@@ -179,6 +179,27 @@ const seedDatabase = async () => {
             }
         ];
 
+
+        // Thêm dataset mẫu cho phép tải file sample_dataset.csv
+        sampleDatasets.push({
+            title: 'Sample EV Dataset',
+            description: 'Sample dataset for download testing',
+            price: 0,
+            dataCategory: 'driving_behavior',
+            region: 'Toàn quốc',
+            vehicleType: 'EV',
+            batteryType: 'Li-ion',
+            dataFormat: 'csv',
+            pricingType: 'per_download',
+            fileUrl: 'backend/provider_files/sample_dataset.csv',
+            timeRange: JSON.stringify({ start: '2023-01', end: '2023-12' }),
+            usageRights: 'research_only',
+            isAnonymized: true,
+            status: 'approved',
+            providerId: provider.id,
+            createdAt: new Date('2025-10-05')
+        });
+
         await Dataset.bulkCreate(sampleDatasets);
 
         console.log('✅ Seeded database successfully!');
