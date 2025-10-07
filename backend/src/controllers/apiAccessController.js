@@ -23,7 +23,9 @@ exports.renewKey = async (req, res) => {
   try {
     const userId = req.user.id;
     let apiKey = await APIKey.findOne({ where: { userId, status: 'active' } });
-    if (!apiKey) return res.status(404).json({ status: 'error', message: 'No active API key' });
+    if (!apiKey) {
+      return res.status(404).json({ status: 'error', message: 'No active API key' });
+    }
     apiKey.quota += 1000; // ví dụ: cộng thêm quota
     await apiKey.save();
     res.json({ status: 'success', data: apiKey });

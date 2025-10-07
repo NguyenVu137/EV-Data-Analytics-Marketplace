@@ -49,9 +49,13 @@ exports.searchDatasets = async (req, res) => {
         const { Op } = require('sequelize');
         // Helper ép về mảng nếu là string
         function toArray(val) {
-            if (Array.isArray(val)) return val;
+            if (Array.isArray(val)) {
+                return val;
+            }
             if (typeof val === 'string') {
-                if (val.includes(',')) return val.split(',').map(s => s.trim()).filter(Boolean);
+                if (val.includes(',')) {
+                    return val.split(',').map(s => s.trim()).filter(Boolean);
+                }
                 return [val];
             }
             return [];

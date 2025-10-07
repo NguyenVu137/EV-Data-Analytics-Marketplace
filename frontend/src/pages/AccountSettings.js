@@ -38,7 +38,9 @@ const AccountSettings = () => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("Bạn chắc chắn muốn xóa tài khoản?")) return;
+    if (!window.confirm("Bạn chắc chắn muốn xóa tài khoản?")) {
+      return;
+    }
     setLoading(true);
     setError("");
     try {

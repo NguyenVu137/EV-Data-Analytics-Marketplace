@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Dataset = require('../models/Dataset');
 const datasetController = require('../controllers/datasetController');
-const { authenticateToken } = require('../middleware/auth');
+const authenticateToken = require('../middleware/auth');
 const checkEntitlement = require('../middleware/entitlement');
 
 // Consumer Routes - Tìm kiếm và khám phá dữ liệu
@@ -38,7 +38,9 @@ router.post("/", authenticateToken, async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const dataset = await Dataset.findByPk(req.params.id, { include: User });
-    if (!dataset) return res.status(404).json({ error: "Dataset not found" });
+    if (!dataset) {
+      return res.status(404).json({ error: "Dataset not found" });
+    }
     res.json(dataset);
   } catch (err) {
     res.status(500).json({ error: err.message });

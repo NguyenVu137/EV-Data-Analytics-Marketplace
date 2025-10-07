@@ -2,7 +2,7 @@ const express = require("express");
 const User = require("../models/User");
 const router = express.Router();
 const { getMe, updateMe, deleteMe } = require("../controllers/userController");
-const auth = require("../middleware/auth");
+const auth = require("../middleware/auth"); // Đã sửa export, giờ sẽ là function
 
 // tạo user mới
 router.post("/", async (req, res) => {

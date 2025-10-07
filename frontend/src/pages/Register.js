@@ -3,23 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import config from '../config';
 import './Login.css';
-import { GoogleLogin, googleLogout } from '@react-oauth/google';
+import { GoogleLogin } from '@react-oauth/google';
 
 const Register = () => {
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
-    name: "",
     email: "",
     password: "",
-    role: "consumer" // Auto set role là consumer
+    username: "",
+    role: "consumer"
   });
   const [loading, setLoading] = useState(false);
+  const [googleStep, setGoogleStep] = useState(false);
 
   const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: type === 'checkbox' ? checked : value,
     });
   };
 
@@ -28,51 +30,66 @@ const Register = () => {
     setError('');
     setLoading(true);
     try {
-      if (!formData.name || !formData.email || !formData.password) {
-        setError('Vui lòng điền đầy đủ thông tin');
-        setLoading(false);
-        return;
+      if (googleStep) {
+        // Chỉ gửi username và credential Google lên backend
+        if (!formData.username) {
+          setError('Vui lòng nhập username');
+          setLoading(false);
+          return;
+        }
+        if (!/^[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$/.test(formData.username)) {
+          setError('Username may only contain alphanumeric characters or single hyphens, and cannot begin or end with a hyphen.');
+          setLoading(false);
+          return;
+        }
+        await axios.post(`${config.backendUrl}/auth/google/username`, {
+          username: formData.username,
+          credential: formData.credential
+        });
+        navigate('/login');
+      } else {
+        // Đăng ký thường
+        if (!formData.email || !formData.password || !formData.username) {
+          setError('Vui lòng điền đầy đủ thông tin');
+          setLoading(false);
+          return;
+        }
+        if (!(formData.password.length >= 15 || (formData.password.length >= 8 && /[0-9]/.test(formData.password) && /[a-z]/.test(formData.password)))) {
+          setError('Password should be at least 15 characters OR at least 8 characters including a number and a lowercase letter');
+          setLoading(false);
+          return;
+        }
+        if (!/^[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$/.test(formData.username)) {
+          setError('Username may only contain alphanumeric characters or single hyphens, and cannot begin or end with a hyphen.');
+          setLoading(false);
+          return;
+        }
+        const response = await axios.post(`${config.backendUrl}/auth/register`, formData, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          timeout: 5000,
+        });
+        console.log('Register successful:', response.data);
+        navigate('/login');
       }
-      const response = await axios.post(`${config.backendUrl}/auth/register`, formData, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        timeout: 5000,
-      });
-      console.log('Register successful:', response.data);
-      navigate('/login');
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed: ' + err.message);
       console.error('Register error:', err.response?.data || err.message);
     } finally {
       setTimeout(() => {
         setLoading(false);
-      }, 500); // Delay 0.5s before stopping loading
+      }, 500);
     }
   };
 
   // Xử lý đăng ký bằng Google
   const handleGoogleSuccess = async (credentialResponse) => {
-    setLoading(true);
+    // Lưu credential, chuyển sang bước nhập username
+    setFormData((prev) => ({ ...prev, credential: credentialResponse.credential }));
+    setGoogleStep(true);
     setError("");
-    try {
-      // Gửi credential lên backend để xác thực/tạo tài khoản
-      const response = await axios.post(`${config.backendUrl}/auth/google`, {
-        credential: credentialResponse.credential,
-        mode: 'register'
-      });
-      // Nếu backend trả về token, chuyển hướng sang dashboard hoặc login
-      navigate('/login');
-    } catch (err) {
-      if (err.response?.status === 400 || err.response?.status === 409) {
-        setError('Tài khoản Google này đã được đăng ký. Vui lòng đăng nhập.');
-      } else {
-        setError(err.response?.data?.message || 'Google signup failed: ' + err.message);
-      }
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleGoogleError = () => {
@@ -81,59 +98,88 @@ const Register = () => {
 
   return (
     <div className="login-container">
-      <form className="login-form" onSubmit={handleSubmit}>
-        <h2>Register</h2>
-        {error && <div className="error-message">{error}</div>}
-        <div className="form-group">
-          <label htmlFor="name">Name:</label>
-          <input 
-            type="text" 
-            id="name"
-            name="name" 
-            value={formData.name} 
-            onChange={handleChange} 
-            required 
-            minLength="2"
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="email">Email:</label>
-          <input 
-            type="email" 
-            id="email"
-            name="email" 
-            value={formData.email} 
-            onChange={handleChange} 
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="password">Password:</label>
-          <input 
-            type="password"
-            id="password" 
-            name="password" 
-            value={formData.password} 
-            onChange={handleChange} 
-            required 
-            minLength="6"
-          />
-        </div>
-        <button type="submit" disabled={loading}>Register</button>
-        <div style={{ textAlign: 'center', margin: '16px 0' }}>Hoặc</div>
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <GoogleLogin
-            onSuccess={handleGoogleSuccess}
-            onError={handleGoogleError}
-            width="100%"
-            locale="vi"
-            text="signup_with"
-          />
-        </div>
-        <p className="form-footer">
-          Already have an account? <a href="/login">Login here</a>
-        </p>
-      </form>
+      {!googleStep ? (
+        <form className="login-form" onSubmit={handleSubmit}>
+          <h2>Sign up for EV Data Marketplace</h2>
+          {error && <div className="error-message">{error}</div>}
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input 
+              type="email" 
+              id="email"
+              name="email" 
+              value={formData.email} 
+              onChange={handleChange} 
+              required
+              placeholder="Email"
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input 
+              type="password"
+              id="password" 
+              name="password" 
+              value={formData.password} 
+              onChange={handleChange} 
+              required 
+              minLength="8"
+              placeholder="Password"
+            />
+            <small>Password should be at least 15 characters OR at least 8 characters including a number and a lowercase letter.</small>
+          </div>
+          <div className="form-group">
+            <label htmlFor="username">Username</label>
+            <input 
+              type="text"
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              required
+              minLength="2"
+              pattern="^[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$"
+              placeholder="Username"
+            />
+            <small>Username may only contain alphanumeric characters or single hyphens, and cannot begin or end with a hyphen.</small>
+          </div>
+          <button type="submit" disabled={loading}>Create account</button>
+          <div style={{ textAlign: 'center', margin: '16px 0' }}>Hoặc</div>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              width="100%"
+              locale="vi"
+              text="signup_with"
+            />
+          </div>
+          <p className="form-footer">
+            Already have an account? <a href="/login">Sign in →</a>
+          </p>
+        </form>
+      ) : (
+        <form className="login-form" onSubmit={handleSubmit}>
+          <h2>Choose your username</h2>
+          {error && <div className="error-message">{error}</div>}
+          <div className="form-group">
+            <label htmlFor="username">Username</label>
+            <input 
+              type="text"
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              required
+              minLength="2"
+              pattern="^[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$"
+              placeholder="Username"
+            />
+            <small>Username may only contain alphanumeric characters or single hyphens, and cannot begin or end with a hyphen.</small>
+          </div>
+          <button type="submit" disabled={loading}>Create account</button>
+        </form>
+      )}
       {loading && (
         <div className="loading-overlay">
           <div className="loading-spinner"></div>

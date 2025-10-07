@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const apiAccessController = require('../controllers/apiAccessController');
-const { authenticateToken } = require('../middleware/auth');
+const authenticateToken = require('../middleware/auth');
 
 // API truy cập dữ liệu EV cho bên thứ ba
 // GET /api/evdata/:datasetId

@@ -10,7 +10,9 @@ router.post("/", async (req, res) => {
     const { consumerId, datasetId } = req.body;
 
     const dataset = await Dataset.findByPk(datasetId);
-    if (!dataset) return res.status(404).json({ error: "Dataset not found" });
+    if (!dataset) {
+      return res.status(404).json({ error: "Dataset not found" });
+    }
 
     const transaction = await Transaction.create({
       consumerId,
