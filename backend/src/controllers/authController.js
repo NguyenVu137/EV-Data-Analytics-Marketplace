@@ -70,25 +70,17 @@ exports.register = async (req, res) => {
     // mã hóa password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Create user and mark email as verified immediately (skip email verification flow)
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
       role,
-      isEmailVerified: false,
+      isEmailVerified: true,
     });
 
-    // Tạo token xác thực email
-    const token = uuidv4();
-    await EmailVerificationToken.create({
-      userId: user.id,
-      token,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24h
-    });
-    // Gửi email xác thực
-    await sendVerificationEmail(user, token);
-
-    res.status(201).json({ message: "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản." });
+    // Note: email verification step intentionally skipped in this deployment
+    res.status(201).json({ message: "Đăng ký thành công." });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -253,6 +245,10 @@ exports.googleAuth = async (req, res) => {
     if (!credential) {
       return res.status(400).json({ message: 'Thiếu credential từ Google' });
     }
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      console.error('GOOGLE_CLIENT_ID is not set in environment');
+      return res.status(500).json({ message: 'Server misconfiguration: GOOGLE_CLIENT_ID missing' });
+    }
     const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
     // Xác thực token Google
     const ticket = await client.verifyIdToken({
@@ -285,7 +281,8 @@ exports.googleAuth = async (req, res) => {
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (err) {
-    res.status(500).json({ message: 'Google xác thực thất bại', error: err.message });
+    console.error('googleAuth error:', err && err.stack ? err.stack : err);
+    res.status(500).json({ message: 'Google xác thực thất bại', error: err.message || String(err) });
   }
 };
 
@@ -300,8 +297,18 @@ exports.googleRegisterWithUsername = async (req, res) => {
     if (!/^[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$/.test(username)) {
       return res.status(400).json({ message: 'Username không hợp lệ' });
     }
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      console.error('GOOGLE_CLIENT_ID is not set in environment');
+      return res.status(500).json({ message: 'Server misconfiguration: GOOGLE_CLIENT_ID missing' });
+    }
     const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-    const ticket = await client.verifyIdToken({ idToken: credential, audience: process.env.GOOGLE_CLIENT_ID });
+    let ticket;
+    try {
+      ticket = await client.verifyIdToken({ idToken: credential, audience: process.env.GOOGLE_CLIENT_ID });
+    } catch (verifyErr) {
+      console.error('Error verifying Google idToken:', verifyErr && verifyErr.stack ? verifyErr.stack : verifyErr);
+      return res.status(400).json({ message: 'Credential Google không hợp lệ', error: verifyErr.message || String(verifyErr) });
+    }
     const payload = ticket.getPayload();
     if (!payload?.email) {
       return res.status(400).json({ message: 'Không lấy được email từ Google' });
@@ -322,6 +329,7 @@ exports.googleRegisterWithUsername = async (req, res) => {
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (err) {
-    res.status(500).json({ message: 'Google registration failed', error: err.message });
+    console.error('googleRegisterWithUsername error:', err && err.stack ? err.stack : err);
+    res.status(500).json({ message: 'Google registration failed', error: err.message || String(err) });
   }
 };
