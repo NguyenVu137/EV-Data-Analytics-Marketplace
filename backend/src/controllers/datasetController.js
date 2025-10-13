@@ -25,7 +25,9 @@ const User = require('../models/User');
 
 exports.searchDatasets = async (req, res) => {
     try {
-        console.log('Received search request with query:', req.query);
+        if (process.env.DEBUG && process.env.DEBUG.toLowerCase() === 'true') {
+            console.log('Received search request with query:', req.query);
+        }
         const {
             dataCategory,
             region,
@@ -37,7 +39,10 @@ exports.searchDatasets = async (req, res) => {
             dateTo,
             sortBy = 'newest',
             page = 1,
-            limit = 10
+            limit = 10,
+            lat,
+            lng,
+            radiusKm
         } = req.query;
 
         // Xây dựng query conditions
@@ -45,8 +50,6 @@ exports.searchDatasets = async (req, res) => {
             status: 'approved', // Chỉ lấy các dataset đã được duyệt
         };
 
-        // Multi-select filter hỗ trợ mảng hoặc chuỗi
-        const { Op } = require('sequelize');
         // Helper ép về mảng nếu là string
         function toArray(val) {
             if (Array.isArray(val)) {
@@ -104,18 +107,36 @@ exports.searchDatasets = async (req, res) => {
             whereConditions.createdAt = { ...(whereConditions.createdAt || {}), [Op.lte]: new Date(dateTo + 'T23:59:59.999Z') };
         }
 
-        // Phân trang
-        const offset = (page - 1) * limit;
+        // Phân trang (parse int)
+        const pageNum = parseInt(page) || 1;
+        const perPage = parseInt(limit) || 10;
+        const offset = (pageNum - 1) * perPage;
 
         // Xác định thứ tự sắp xếp
+        // Support additional sort options: price_asc, price_desc, newest, oldest
         let order = [['createdAt', 'DESC']];
         if (sortBy === 'oldest') {
             order = [['createdAt', 'ASC']];
         } else if (sortBy === 'newest') {
             order = [['createdAt', 'DESC']];
+        } else if (sortBy === 'price_asc') {
+            order = [['price', 'ASC']];
+        } else if (sortBy === 'price_desc') {
+            order = [['price', 'DESC']];
         }
 
-        // Thực hiện tìm kiếm
+        // If location filter provided, do approximate filter using lat/lng bounding box
+        if (lat && lng && radiusKm) {
+            const r = parseFloat(radiusKm) || 5; // km
+            const latNum = parseFloat(lat);
+            const lngNum = parseFloat(lng);
+            // Approx bounding box (very small inaccuracies) ~ 111 km per degree latitude
+            const latDelta = r / 111;
+            const lngDelta = Math.abs(r / (111 * Math.cos((latNum * Math.PI) / 180)));
+            whereConditions.locationLat = { [Op.between]: [latNum - latDelta, latNum + latDelta] };
+            whereConditions.locationLng = { [Op.between]: [lngNum - lngDelta, lngNum + lngDelta] };
+        }
+
         const datasets = await Dataset.findAndCountAll({
             where: whereConditions,
             include: [{
@@ -123,23 +144,23 @@ exports.searchDatasets = async (req, res) => {
                 attributes: ['name', 'email'],
                 as: 'Provider'
             }],
-            limit: parseInt(limit),
-            offset: parseInt(offset),
+            limit: perPage,
+            offset,
             order
         });
 
         // Tính toán thông tin phân trang
-        const totalPages = Math.ceil(datasets.count / limit);
+        const totalPages = Math.ceil(datasets.count / perPage);
 
         res.json({
             status: 'success',
             data: {
                 datasets: datasets.rows,
                 pagination: {
-                    currentPage: parseInt(page),
+                    currentPage: pageNum,
                     totalPages,
                     totalItems: datasets.count,
-                    itemsPerPage: parseInt(limit)
+                    itemsPerPage: perPage
                 }
             }
         });
@@ -156,7 +177,11 @@ exports.searchDatasets = async (req, res) => {
 exports.getDatasetDetails = async (req, res) => {
     try {
         const { id } = req.params;
+        if (process.env.DEBUG && process.env.DEBUG.toLowerCase() === 'true') {
+            console.log('getDatasetDetails called with id=', id);
+        }
 
+        // Include Provider if exists, but don't require Provider to be present
         const dataset = await Dataset.findOne({
             where: {
                 id,
@@ -165,14 +190,14 @@ exports.getDatasetDetails = async (req, res) => {
             include: [{
                 model: User,
                 as: 'Provider',
-                attributes: ['name', 'email'],
-                where: {
-                    role: 'provider'
-                }
+                attributes: ['name', 'email']
             }]
         });
 
-        if (!dataset) {
+    if (process.env.DEBUG && process.env.DEBUG.toLowerCase() === 'true') {
+        console.log('found dataset=', !!dataset, dataset && dataset.id);
+    }
+    if (!dataset) {
             return res.status(404).json({
                 status: 'error',
                 message: 'Dataset not found'

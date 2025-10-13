@@ -13,6 +13,8 @@ const AIChatbox = () => {
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [insightMode, setInsightMode] = useState(false);
+  const [suggestedDatasets, setSuggestedDatasets] = useState([]);
 
   useEffect(() => {
     // Lấy danh sách câu hỏi gợi ý từ backend
@@ -23,25 +25,39 @@ const AIChatbox = () => {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim()) {
+      return;
+    }
     const userMsg = { sender: 'user', text: input };
     setMessages(msgs => [...msgs, userMsg]);
     setLoading(true);
     setInput('');
     try {
-      const res = await axios.post(`${config.backendUrl}/api/ai/chat`, { message: input });
-      // Nếu trả về matched=false thì là câu hỏi ngoài rule-based
-      if (res.data.matched === false) {
-        setMessages(msgs => [...msgs, {
-          sender: 'ai',
-          text: res.data.message,
-          warning: true,
-          suggestions: res.data.suggestions || []
-        }]);
-        setShowSuggestions(true);
+      let res;
+      if (insightMode) {
+        res = await axios.post(`${config.backendUrl}/api/ai/insight`, { query: input }, { withCredentials: true });
       } else {
-        setMessages(msgs => [...msgs, { sender: 'ai', text: res.data.message }]);
+        res = await axios.post(`${config.backendUrl}/api/ai/chat`, { message: input });
+      }
+      if (insightMode) {
+        const ans = res.data.answer || res.data.message || '';
+        setMessages(msgs => [...msgs, { sender: 'ai', text: ans }]);
+        setSuggestedDatasets(res.data.suggestions || []);
         setShowSuggestions(false);
+      } else {
+        // Nếu trả về matched=false thì là câu hỏi ngoài rule-based
+        if (res.data.matched === false) {
+          setMessages(msgs => [...msgs, {
+            sender: 'ai',
+            text: res.data.message,
+            warning: true,
+            suggestions: res.data.suggestions || []
+          }]);
+          setShowSuggestions(true);
+        } else {
+          setMessages(msgs => [...msgs, { sender: 'ai', text: res.data.message }]);
+          setShowSuggestions(false);
+        }
       }
     } catch (err) {
       setMessages(msgs => [...msgs, { sender: 'ai', text: 'Lỗi khi kết nối AI. Vui lòng thử lại sau.' }]);
@@ -84,6 +100,23 @@ const AIChatbox = () => {
               <li key={i} onClick={() => handleSuggestionClick(q)}>{q}</li>
             ))}
           </ul>
+        </div>
+      )}
+      <div style={{ marginTop: 8 }}>
+        <label style={{ fontSize: 14 }}><input type="checkbox" checked={insightMode} onChange={e => setInsightMode(e.target.checked)} /> Insight mode</label>
+      </div>
+      {suggestedDatasets && suggestedDatasets.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <h4>Gợi ý dataset liên quan</h4>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
+            {suggestedDatasets.map(s => (
+              <div key={s.id} style={{ border: '1px solid #ddd', padding: 8, minWidth: 200 }}>
+                <div style={{ fontWeight: 'bold' }}>{s.meta.title}</div>
+                <div style={{ fontSize: 12, color: '#666' }}>{s.meta.category}</div>
+                <a href={`/#/dataset/${s.id}`}>Xem dataset</a>
+              </div>
+            ))}
+          </div>
         </div>
       )}
       <form className="ai-chat-input" onSubmit={handleSend}>

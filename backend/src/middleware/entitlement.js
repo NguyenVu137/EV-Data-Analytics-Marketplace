@@ -4,7 +4,7 @@ const Transaction = require('../models/Transaction');
 const Dataset = require('../models/Dataset');
 
 // Kiểm tra quyền truy cập dataset (mua lẻ, subscription, API)
-module.exports = async function checkEntitlement(req, res, next) {
+async function checkEntitlement(req, res, next) {
   try {
     const userId = req.user.id;
     const datasetId = req.params.datasetId || req.body.datasetId;
@@ -45,3 +45,31 @@ module.exports = async function checkEntitlement(req, res, next) {
     return res.status(500).json({ status: 'error', message: 'Entitlement check failed', error: err.message });
   }
 }
+
+// Helper to deduct quota after a successful API access
+async function deductQuotaForRequest({ req }) {
+  try {
+    // Deduct API key quota
+    if (req.apiKey) {
+      const apiKey = await APIKey.findByPk(req.apiKey.id);
+      if (apiKey) {
+        apiKey.used = (apiKey.used || 0) + 1;
+        await apiKey.save();
+      }
+    }
+
+    // Deduct subscription quota (API)
+    if (req.user) {
+      const sub = await Subscription.findOne({ where: { userId: req.user.id, status: 'active' } });
+      if (sub && sub.usedAPI != null) {
+        sub.usedAPI = (sub.usedAPI || 0) + 1;
+        await sub.save();
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to deduct quota:', e.message);
+  }
+}
+
+module.exports = checkEntitlement;
+module.exports.deductQuotaForRequest = deductQuotaForRequest;

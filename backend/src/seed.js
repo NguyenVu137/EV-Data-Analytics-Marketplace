@@ -1,9 +1,16 @@
+// Ensure seed uses local SQLite for development if MySQL isn't reachable
+process.env.DB_USE_SQLITE = process.env.DB_USE_SQLITE || 'true';
+console.log('DB_USE_SQLITE=', process.env.DB_USE_SQLITE);
+const sequelize = require('./config/database');
 const User = require('./models/User');
 const Dataset = require('./models/Dataset');
 const bcrypt = require('bcryptjs');
 
 const seedDatabase = async () => {
     try {
+        // Ensure tables exist (especially when using SQLite local file)
+        await sequelize.sync();
+
         // Xóa dữ liệu cũ
         await Dataset.destroy({ where: {} });
         await User.destroy({ where: {} });

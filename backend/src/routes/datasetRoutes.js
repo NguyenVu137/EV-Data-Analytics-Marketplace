@@ -20,6 +20,9 @@ router.post("/", authenticateToken, async (req, res) => {
       region, vehicleType, batteryType, dataFormat, timeRange,
       usageRights, isAnonymized } = req.body;
 
+    // If providerId is available from authenticated user, use it; otherwise allow null
+    const providerId = req.user?.id || null;
+
     const dataset = await Dataset.create({
       title,
       description,
@@ -34,17 +37,6 @@ router.post("/", authenticateToken, async (req, res) => {
   }
 });
 
-// Xem chi tiết dataset
-router.get("/:id", async (req, res) => {
-  try {
-    const dataset = await Dataset.findByPk(req.params.id, { include: User });
-    if (!dataset) {
-      return res.status(404).json({ error: "Dataset not found" });
-    }
-    res.json(dataset);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// Note: dataset details route is handled above by datasetController.getDatasetDetails
 
 module.exports = router;

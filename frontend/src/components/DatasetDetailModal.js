@@ -17,7 +17,7 @@ const DatasetDetailModal = ({ datasetId, onClose }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user || !datasetId) return;
+    if (!user || !datasetId) { return; }
     axios.get(`${config.backendUrl}/api/transactions/consumer/${user.id}`)
       .then(res => {
         if (Array.isArray(res.data)) {
@@ -27,7 +27,7 @@ const DatasetDetailModal = ({ datasetId, onClose }) => {
   }, [user, datasetId]);
 
   useEffect(() => {
-    if (datasetId) fetchDetails();
+    if (datasetId) { fetchDetails(); }
     // eslint-disable-next-line
   }, [datasetId]);
 
@@ -89,7 +89,10 @@ const DatasetDetailModal = ({ datasetId, onClose }) => {
               <div><b>Khu vực:</b> {dataset.region}</div>
               <div><b>Loại xe:</b> {dataset.vehicleType}</div>
               <div><b>Loại pin:</b> {dataset.batteryType}</div>
-              <div><b>Định dạng:</b> {dataset.dataFormat}</div>
+              <div><b>Định dạng dữ liệu:</b> {dataset.dataFormat}</div>
+              {dataset.locationLat && dataset.locationLng && (
+                <div><b>Vị trí (lat,lng):</b> {dataset.locationLat.toFixed(5)}, {dataset.locationLng.toFixed(5)}</div>
+              )}
               <div><b>Loại dữ liệu:</b> {dataset.type === 'processed' ? 'Processed' : 'Raw'}</div>
               <div><b>Ngày đăng tải:</b> {dataset.createdAt ? new Date(dataset.createdAt).toLocaleDateString() : ''}</div>
               <div><b>Kích thước:</b> {dataset.sizeBytes ? `${(dataset.sizeBytes/1024/1024).toFixed(1)} MB` : ''}</div>
@@ -186,7 +189,7 @@ const DatasetDetailModal = ({ datasetId, onClose }) => {
                     const res = await fetch(`${config.backendUrl}/api/datasets/download/${dataset.id}`, {
                       headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                     });
-                    if (!res.ok) throw new Error('Download failed');
+                    if (!res.ok) { throw new Error('Download failed'); }
                     const blob = await res.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');

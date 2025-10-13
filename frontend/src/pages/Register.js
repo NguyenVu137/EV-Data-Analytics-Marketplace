@@ -16,13 +16,39 @@ const Register = () => {
   });
   const [loading, setLoading] = useState(false);
   const [googleStep, setGoogleStep] = useState(false);
+  const [showGoogleLogin, setShowGoogleLogin] = useState(false);
+
+  // Generate a safe username from email local-part
+  const generateUsernameFromEmail = (email) => {
+    const local = (email || '').split('@')[0] || '';
+    let gen = local.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    gen = gen.replace(/^-+|-+$/g, '');
+    gen = gen.replace(/-+/g, '-');
+    if (gen.length < 2) {
+      gen = gen + Math.floor(10 + Math.random() * 90).toString();
+    }
+    return gen;
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === 'checkbox' ? checked : value,
-    });
+    const newValue = type === 'checkbox' ? checked : value;
+    const updated = { ...formData, [name]: newValue };
+
+    // If user types email and username is empty or was previously generated, auto-fill username
+    if (name === 'email') {
+      if (!formData.username || formData._generatedUsername) {
+        updated.username = generateUsernameFromEmail(newValue);
+        updated._generatedUsername = true;
+      }
+    }
+
+    // If user edits username manually, mark it as user-provided
+    if (name === 'username') {
+      updated._generatedUsername = false;
+    }
+
+    setFormData(updated);
   };
 
   const handleSubmit = async (e) => {
@@ -64,7 +90,9 @@ const Register = () => {
           setLoading(false);
           return;
         }
-        const response = await axios.post(`${config.backendUrl}/auth/register`, formData, {
+        // backend expects `name`, so map username -> name
+        const payload = { ...formData, name: formData.username };
+        const response = await axios.post(`${config.backendUrl}/auth/register`, payload, {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
@@ -146,13 +174,17 @@ const Register = () => {
           <button type="submit" disabled={loading}>Create account</button>
           <div style={{ textAlign: 'center', margin: '16px 0' }}>Hoặc</div>
           <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={handleGoogleError}
-              width="100%"
-              locale="vi"
-              text="signup_with"
-            />
+            {!showGoogleLogin ? (
+              <button type="button" className="btn btn-google" onClick={() => setShowGoogleLogin(true)}>Đăng ký bằng Google</button>
+            ) : (
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                width="100%"
+                locale="vi"
+                text="signup_with"
+              />
+            )}
           </div>
           <p className="form-footer">
             Already have an account? <a href="/login">Sign in →</a>

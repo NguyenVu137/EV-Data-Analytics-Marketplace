@@ -47,12 +47,15 @@ const TransactionHistory = () => {
               <td>{tr.Dataset?.title}</td>
               <td>{tr.Dataset?.pricingType}</td>
               <td>{tr.amount}₫</td>
-              <td>{tr.status === 'completed' ? 'Đã thanh toán' : 'Chờ xử lý'}</td>
+                <td>{tr.status === 'completed' ? 'Đã thanh toán' : 'Chờ xử lý'}</td>
               <td>{new Date(tr.createdAt).toLocaleString()}</td>
               <td>
-                {tr.Dataset?.id && (
-                  <button onClick={() => setSelectedDatasetId(tr.Dataset.id)}>Xem chi tiết</button>
-                )}
+                  {tr.Dataset?.id && (
+                    <button onClick={() => setSelectedDatasetId(tr.Dataset.id)}>Xem chi tiết</button>
+                  )}
+                  {tr.Invoice && (
+                    <a href={`${config.backendUrl}/api/transactions/invoices/${tr.Invoice.id}`} target="_blank" rel="noreferrer">Xem hóa đơn</a>
+                  )}
               </td>
             </tr>
           ))}

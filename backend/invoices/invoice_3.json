@@ -1,0 +1,12 @@
+{
+  "status": "pending",
+  "id": 3,
+  "transactionId": 3,
+  "userId": 4,
+  "amount": 9.99,
+  "currency": "USD",
+  "issuedAt": "2025-10-10T14:01:21.191Z",
+  "lines": "[{\"description\":\"Purchase dataset null\",\"amount\":9.99}]",
+  "updatedAt": "2025-10-10T14:01:21.192Z",
+  "createdAt": "2025-10-10T14:01:21.192Z"
+}

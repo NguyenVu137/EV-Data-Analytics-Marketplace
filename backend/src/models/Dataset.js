@@ -63,6 +63,15 @@ const Dataset = sequelize.define("Dataset", {
     allowNull: false,
     defaultValue: 'raw'
   },
+  // Location as lat/lng (sqlite doesn't support GEOMETRY reliably) - use numeric fields
+  locationLat: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+  },
+  locationLng: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+  },
   timeRange: {
     type: DataTypes.JSON, // {start: "2023-01", end: "2023-12"}
     allowNull: true,

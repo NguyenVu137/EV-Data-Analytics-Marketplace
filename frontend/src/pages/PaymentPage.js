@@ -20,12 +20,17 @@ const PaymentPage = () => {
 
   const handleConfirm = async () => {
     setProcessing(true);
-    try {
-      await axios.post(`${config.backendUrl}/api/transactions`, { consumerId: user.id, datasetId: dataset.id });
-      // Sau khi thanh toán thành công, chuyển tới lịch sử giao dịch
-      navigate('/transactions');
+      try {
+        const res = await axios.post(`${config.backendUrl}/api/transactions/payments/create-session`, { datasetId: dataset.id }, { withCredentials: true });
+        // backend returns session.url where to redirect
+        if (res.data && res.data.url) {
+          window.location.href = res.data.url;
+          return;
+        }
+        alert('Không thể tạo phiên thanh toán');
     } catch (e) {
-      alert('Thanh toán thất bại');
+        console.error(e);
+        alert('Thanh toán thất bại');
     } finally {
       setProcessing(false);
     }

@@ -50,7 +50,9 @@ async function sendResetPasswordEmail(user, token) {
 // Register
 exports.register = async (req, res) => {
   try {
+  if (process.env.DEBUG && process.env.DEBUG.toLowerCase() === 'true') {
     console.log('Register request received:', req.body);
+  }
     const { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
@@ -251,5 +253,42 @@ exports.googleAuth = async (req, res) => {
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (err) {
     res.status(500).json({ message: 'Google xác thực thất bại', error: err.message });
+  }
+};
+
+// Đăng ký bằng Google với username (credential + username)
+exports.googleRegisterWithUsername = async (req, res) => {
+  console.log('googleRegisterWithUsername called with body:', req.body);
+  try {
+    const { credential, username } = req.body;
+    if (!credential || !username) {
+      return res.status(400).json({ message: 'Thiếu credential hoặc username' });
+    }
+    if (!/^[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$/.test(username)) {
+      return res.status(400).json({ message: 'Username không hợp lệ' });
+    }
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    const ticket = await client.verifyIdToken({ idToken: credential, audience: process.env.GOOGLE_CLIENT_ID });
+    const payload = ticket.getPayload();
+    if (!payload?.email) {
+      return res.status(400).json({ message: 'Không lấy được email từ Google' });
+    }
+    // Kiểm tra xem đã có user với email này chưa
+    let user = await User.findOne({ where: { email: payload.email } });
+    if (user) {
+      return res.status(400).json({ message: 'Tài khoản Google này đã tồn tại. Vui lòng đăng nhập.' });
+    }
+    // Tạo user mới, sử dụng username làm name
+    user = await User.create({
+      name: username,
+      email: payload.email,
+      password: '',
+      isEmailVerified: true,
+      role: 'consumer',
+    });
+    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.status(201).json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+  } catch (err) {
+    res.status(500).json({ message: 'Google registration failed', error: err.message });
   }
 };

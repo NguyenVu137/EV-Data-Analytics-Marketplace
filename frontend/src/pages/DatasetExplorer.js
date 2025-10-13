@@ -20,8 +20,8 @@ const timeSortOptions = [
 const DatasetExplorer = () => {
     const [datasets, setDatasets] = useState([]);
     const [selectedDatasetId, setSelectedDatasetId] = useState(null);
-    // const [loading, setLoading] = useState(false);
-    // const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     const [filters, setFilters] = useState({
         dataCategory: '',
         region: '',
@@ -42,19 +42,35 @@ const DatasetExplorer = () => {
     const itemsPerPageOptions = [5, 10, 20, 50, 100];
     // Removed unused purchase and categories state
 
+    // On mount, read filters from URL if present
     useEffect(() => {
-        searchDatasets();
+        const params = new URLSearchParams(window.location.search);
+        const initial = { ...filters };
+        for (const key of ['dataCategory','region','vehicleType','batteryType','dataFormat','searchTerm','sortBy','dateFrom','dateTo']) {
+            if (params.get(key) !== null) { initial[key] = params.get(key); }
+        }
+        if (params.get('page')) { setPagination(prev => ({ ...prev, currentPage: parseInt(params.get('page') || 1) })); }
+        setFilters(initial);
+        // perform initial search after state set
+        setTimeout(() => searchDatasets(parseInt(params.get('page') || 1)), 0);
         // eslint-disable-next-line
     }, []);
 
     // Fetch datasets with filters and pagination
     const searchDatasets = async (page = 1) => {
+        setLoading(true);
+        setError('');
         try {
             const params = {
                 ...filters,
                 page,
                 limit: pagination.itemsPerPage
             };
+            // update URL so filter state is persisted
+            const qs = new URLSearchParams(params).toString();
+            const newUrl = `${window.location.pathname}?${qs}`;
+            window.history.replaceState({}, '', newUrl);
+
             const res = await axios.get(`${config.backendUrl}/api/datasets/search`, { params });
             if (res.data.status === 'success') {
                 setDatasets(res.data.data.datasets);
@@ -62,11 +78,12 @@ const DatasetExplorer = () => {
             } else {
                 setDatasets([]);
                 setPagination({ ...pagination, totalItems: 0, totalPages: 1 });
-                // setError('Không tìm thấy dữ liệu phù hợp.');
             }
         } catch (err) {
-            // setError('Lỗi khi tải dữ liệu.');
+            setError('Lỗi khi tải dữ liệu. Vui lòng thử lại.');
             setDatasets([]);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -266,6 +283,7 @@ const DatasetExplorer = () => {
             </form>
 
             {/* Tổng số kết quả và chọn số lượng/trang */}
+            {error && <div style={{ color: 'red', marginBottom: 8 }}>{error}</div>}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '16px 0 8px 0' }}>
                 <div><b>Tổng số kết quả:</b> {pagination.totalItems}</div>
                 <div>
@@ -280,7 +298,12 @@ const DatasetExplorer = () => {
             {/* Dataset list và phân trang */}
             <>
                 <div className="datasets-grid">
-                    {datasets.map(ds => (
+                    {loading ? (
+                        <div style={{ padding: 20 }}>Đang tải dữ liệu...</div>
+                    ) : datasets.length === 0 ? (
+                        <div style={{ padding: 20 }}>Không có dataset nào khớp với bộ lọc hiện tại.</div>
+                    ) : (
+                        datasets.map(ds => (
                         <div className="dataset-card" key={ds.id}>
                             <div className="badge-row">
                                 <span className={`badge badge-type badge-${ds.type || ds.dataFormat}`}>{ds.type === 'processed' || ds.dataFormat === 'analyzed' ? 'Processed' : 'Raw'}</span>
@@ -312,7 +335,8 @@ const DatasetExplorer = () => {
                             </div>
                             <button className="view-details" onClick={() => handleOpenDetail(ds.id)}>Xem chi tiết</button>
                         </div>
-                    ))}
+                        ))
+                    )}
                 </div>
                 {/* Pagination */}
                 {pagination.totalPages > 1 && (

@@ -59,3 +59,69 @@ router.get('/suggestions', (req, res) => {
 });
 
 module.exports = router;
+
+// --- Insight endpoint: rule-based -> retrieval -> LLM fallback ---
+const { retrieveTopK } = require('../services/vectorStore');
+const AIUsage = require('../models/AIUsage');
+const Subscription = require('../models/Subscription');
+const authenticateToken = require('../middleware/auth');
+
+async function callLLM(prompt) {
+  // Optional: call OpenAI if key present
+  if (!process.env.OPENAI_API_KEY) return null;
+  const OpenAI = require('openai');
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  try {
+    const r = await client.chat.completions.create({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: prompt }], max_tokens: 500 });
+    return r.choices && r.choices[0] && r.choices[0].message.content;
+  } catch (e) {
+    console.error('LLM error', e);
+    return null;
+  }
+}
+
+router.post('/insight', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { query, range, region, vehicleType } = req.body;
+
+    // Quota check
+    const sub = await Subscription.findOne({ where: { userId, status: 'active' } });
+    if (sub && sub.quotaAI && sub.usedAI >= sub.quotaAI) {
+      return res.status(403).json({ status: 'error', message: 'AI quota exceeded' });
+    }
+
+    // 1) rule-based quick answer
+    const rule = ruleBasedReply(query);
+    if (rule.matched) {
+      // log usage
+      await AIUsage.create({ userId, prompt: query, response: rule.message });
+      if (sub) { sub.usedAI = (sub.usedAI || 0) + 1; await sub.save(); }
+      return res.json({ source: 'rule', answer: rule.message });
+    }
+
+    // 2) retrieval
+    const retrieved = await retrieveTopK(query, 5);
+
+    // 3) attempt LLM if available
+    let llmAnswer = null;
+    if (process.env.OPENAI_API_KEY) {
+      const prompt = `User query: ${query}\nRelevant datasets: ${retrieved.map(r => `${r.id}:${r.meta.title}`).join(', ')}`;
+      llmAnswer = await callLLM(prompt);
+    }
+
+    const response = llmAnswer || `Related datasets: ${retrieved.map(r => r.meta.title).join(', ')}`;
+
+    // log
+    await AIUsage.create({ userId, prompt: query, response });
+    if (sub) { sub.usedAI = (sub.usedAI || 0) + 1; await sub.save(); }
+
+    res.json({ source: llmAnswer ? 'llm' : 'retrieval', answer: response, suggestions: retrieved });
+  } catch (err) {
+    console.error('Insight error', err);
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+module.exports = router;
+

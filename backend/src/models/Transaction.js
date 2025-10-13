@@ -8,6 +8,17 @@ const Transaction = sequelize.define("Transaction", {
     type: DataTypes.FLOAT,
     allowNull: false,
   },
+  currency: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'USD'
+  },
+  paymentIntentId: {
+    type: DataTypes.STRING,
+  },
+  provider: {
+    type: DataTypes.STRING,
+  },
   status: {
     type: DataTypes.ENUM("pending", "completed", "failed"),
     defaultValue: "pending",

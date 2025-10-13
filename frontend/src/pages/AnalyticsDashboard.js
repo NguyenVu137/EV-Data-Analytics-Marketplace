@@ -24,13 +24,55 @@ const AnalyticsDashboard = () => {
   const [chargeFreqData, setChargeFreqData] = useState([]);
   const [loadingCharge, setLoadingCharge] = useState(false);
   const [errorCharge, setErrorCharge] = useState('');
+  // Filters
+  const [range, setRange] = useState('30d'); // default 30 days
+  const [regionFilter, setRegionFilter] = useState('');
+  const [vehicleTypeFilter, setVehicleTypeFilter] = useState('');
+  const [regions, setRegions] = useState([]);
+  const [vehicleTypes, setVehicleTypes] = useState([]);
+
+  function exportCsv(arr, filename) {
+    if (!arr || arr.length === 0) {
+      return;
+    }
+    const keys = Object.keys(arr[0]);
+    const lines = [keys.join(',')].concat(arr.map(r => keys.map(k => JSON.stringify(r[k] ?? '')).join(',')));
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
 
   useEffect(() => {
+    // load filter options
+    const loadFilters = async () => {
+      try {
+        const r = await axios.get(`${config.backendUrl}/api/analytics/regions`);
+        setRegions(r.data.data || []);
+      } catch (e) { /* ignore */ }
+      try {
+        const v = await axios.get(`${config.backendUrl}/api/analytics/vehicle-types`);
+        setVehicleTypes(v.data.data || []);
+      } catch (e) { /* ignore */ }
+    };
+    loadFilters();
     // Tần suất sạc
     const fetchChargeFreq = async () => {
       setLoadingCharge(true);
       try {
-        const res = await axios.get(`${config.backendUrl}/api/analytics/charging-frequency`);
+        const params = { range };
+        if (regionFilter) {
+          params.region = regionFilter;
+        }
+        if (vehicleTypeFilter) {
+          params.vehicleType = vehicleTypeFilter;
+        }
+        const res = await axios.get(`${config.backendUrl}/api/analytics/charging-frequency`, { params });
         setChargeFreqData(res.data.data);
         setErrorCharge('');
       } catch (err) {
@@ -43,7 +85,14 @@ const AnalyticsDashboard = () => {
     const fetchSocSoh = async () => {
       setLoadingSoc(true);
       try {
-        const res = await axios.get(`${config.backendUrl}/api/analytics/soc-soh`);
+        const params = { range };
+        if (regionFilter) {
+          params.region = regionFilter;
+        }
+        if (vehicleTypeFilter) {
+          params.vehicleType = vehicleTypeFilter;
+        }
+        const res = await axios.get(`${config.backendUrl}/api/analytics/soc-soh`, { params });
         setSocSohData(res.data.data);
         setErrorSoc('');
       } catch (err) {
@@ -56,7 +105,14 @@ const AnalyticsDashboard = () => {
     const fetchDistance = async () => {
       setLoadingDist(true);
       try {
-        const res = await axios.get(`${config.backendUrl}/api/analytics/distance`);
+        const params = { range };
+        if (regionFilter) {
+          params.region = regionFilter;
+        }
+        if (vehicleTypeFilter) {
+          params.vehicleType = vehicleTypeFilter;
+        }
+        const res = await axios.get(`${config.backendUrl}/api/analytics/distance`, { params });
         setDistanceData(res.data.data);
         setErrorDist('');
       } catch (err) {
@@ -69,7 +125,14 @@ const AnalyticsDashboard = () => {
     const fetchCo2 = async () => {
       setLoadingCo2(true);
       try {
-        const res = await axios.get(`${config.backendUrl}/api/analytics/co2`);
+        const params = { range };
+        if (regionFilter) {
+          params.region = regionFilter;
+        }
+        if (vehicleTypeFilter) {
+          params.vehicleType = vehicleTypeFilter;
+        }
+        const res = await axios.get(`${config.backendUrl}/api/analytics/co2`, { params });
         setCo2Data(res.data.data);
         setErrorCo2('');
       } catch (err) {
@@ -82,14 +145,66 @@ const AnalyticsDashboard = () => {
     fetchSocSoh();
     fetchDistance();
     fetchCo2();
-  }, []);
+  }, [range, regionFilter, vehicleTypeFilter]);
 
   return (
     <div className="dashboard-container">
       <h2>EV Analytics Dashboard</h2>
+      <div style={{ marginBottom: 12, display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div>
+          <label>Range: </label>
+          <select value={range} onChange={e => setRange(e.target.value)}>
+            <option value="7d">7 days</option>
+            <option value="30d">30 days</option>
+            <option value="6m">6 months</option>
+          </select>
+        </div>
+        <div>
+          <label>Region: </label>
+          <select value={regionFilter} onChange={e => setRegionFilter(e.target.value)}>
+            <option value="">All</option>
+            {regions.map(r => (<option key={r} value={r}>{r}</option>))}
+          </select>
+        </div>
+        <div>
+          <label>Vehicle: </label>
+          <select value={vehicleTypeFilter} onChange={e => setVehicleTypeFilter(e.target.value)}>
+            <option value="">All</option>
+            {vehicleTypes.map(v => (<option key={v} value={v}>{v}</option>))}
+          </select>
+        </div>
+        <button onClick={() => {
+          // export each dataset to CSV
+          const toCsv = (arr, filename) => {
+            if (!arr || arr.length === 0) return;
+            const keys = Object.keys(arr[0]);
+            const lines = [keys.join(',')].concat(arr.map(r => keys.map(k => JSON.stringify(r[k] ?? '')).join(',')));
+            const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            // include filters in filename
+            const fullName = filename.replace('.csv', `_${range}${regionFilter?`_${regionFilter}`:''}${vehicleTypeFilter?`_${vehicleTypeFilter}`:''}.csv`);
+            a.download = fullName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+          };
+          toCsv(socSohData, 'soc_soh.csv');
+          toCsv(chargeFreqData, 'charge_frequency.csv');
+          toCsv(distanceData, 'distance.csv');
+          toCsv(co2Data, 'co2.csv');
+        }}>Export CSV</button>
+        <button onClick={() => {
+          // trigger re-fetch by updating range state to same value (forces effect)
+          setRange(r => r);
+        }}>Refresh</button>
+      </div>
       <div className="dashboard-charts">
         <div className="chart-card">
           <h3>SoC/SoH</h3>
+          <div style={{ marginBottom: 8 }}><button onClick={() => { exportCsv(socSohData, `soc_soh_${range}${regionFilter?`_${regionFilter}`:''}${vehicleTypeFilter?`_${vehicleTypeFilter}`:''}.csv`) }}>Export CSV</button></div>
           {loadingSoc ? (
             <div>Đang tải...</div>
           ) : errorSoc ? (
@@ -108,6 +223,7 @@ const AnalyticsDashboard = () => {
         </div>
         <div className="chart-card">
           <h3>Tần suất sạc</h3>
+          <div style={{ marginBottom: 8 }}><button onClick={() => { exportCsv(chargeFreqData, `charge_frequency_${range}${regionFilter?`_${regionFilter}`:''}${vehicleTypeFilter?`_${vehicleTypeFilter}`:''}.csv`) }}>Export CSV</button></div>
           {loadingCharge ? (
             <div>Đang tải...</div>
           ) : errorCharge ? (
@@ -124,6 +240,7 @@ const AnalyticsDashboard = () => {
         </div>
         <div className="chart-card">
           <h3>Quãng đường di chuyển</h3>
+          <div style={{ marginBottom: 8 }}><button onClick={() => { exportCsv(distanceData, `distance_${range}${regionFilter?`_${regionFilter}`:''}${vehicleTypeFilter?`_${vehicleTypeFilter}`:''}.csv`) }}>Export CSV</button></div>
           {loadingDist ? (
             <div>Đang tải...</div>
           ) : errorDist ? (
@@ -140,6 +257,7 @@ const AnalyticsDashboard = () => {
         </div>
         <div className="chart-card">
           <h3>Lượng CO₂ tiết kiệm</h3>
+          <div style={{ marginBottom: 8 }}><button onClick={() => { exportCsv(co2Data, `co2_${range}${regionFilter?`_${regionFilter}`:''}${vehicleTypeFilter?`_${vehicleTypeFilter}`:''}.csv`) }}>Export CSV</button></div>
           {loadingCo2 ? (
             <div>Đang tải...</div>
           ) : errorCo2 ? (
