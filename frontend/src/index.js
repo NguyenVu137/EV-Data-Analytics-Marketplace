@@ -9,6 +9,8 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
   {/* Google client ID is read from REACT_APP_GOOGLE_CLIENT_ID so it can match backend configuration */}
+  {/* DEBUG: print clientId to help debug missing client_id errors */}
+  {console.log('REACT_APP_GOOGLE_CLIENT_ID =', process.env.REACT_APP_GOOGLE_CLIENT_ID)}
   <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
       <App />
     </GoogleOAuthProvider>
