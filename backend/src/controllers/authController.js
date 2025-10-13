@@ -213,6 +213,39 @@ exports.verifyResetCode = async (req, res) => {
   }
 };
 
+// Reset password using token (from email link)
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: 'Thiếu thông tin' });
+    }
+
+    const record = await PasswordResetToken.findOne({ where: { token } });
+    if (!record) {
+      return res.status(400).json({ message: 'Token không hợp lệ' });
+    }
+
+    if (record.expiresAt < new Date()) {
+      await record.destroy();
+      return res.status(400).json({ message: 'Token đã hết hạn' });
+    }
+
+    const user = await User.findByPk(record.userId);
+    if (!user) {
+      return res.status(400).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    await record.destroy();
+
+     res.json({ message: 'Đổi mật khẩu thành công. Bạn có thể đăng nhập.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // Đăng nhập bằng Google (chỉ cho phép user đã đăng ký Google)
 exports.googleAuth = async (req, res) => {
   try {

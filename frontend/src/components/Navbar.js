@@ -15,7 +15,7 @@ const Navbar = () => {
         const decoded = jwtDecode(token);
         userEmail = decoded.email || decoded.name || decoded.sub;
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   const handleLogout = () => {
@@ -26,6 +26,8 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <Link to="/" className="navbar-brand">EV Data Marketplace</Link>
+      <Link className="nav-link" to="/admin/index.html">Admin</Link>
+
       <div className="navbar-links">
         {isLoggedIn ? (
           <>
@@ -39,6 +41,7 @@ const Navbar = () => {
           <>
             <Link to="/register" className="nav-link">Register</Link>
             <Link to="/login" className="nav-link">Login</Link>
+
           </>
         )}
       </div>

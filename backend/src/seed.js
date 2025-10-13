@@ -12,8 +12,9 @@ const seedDatabase = async () => {
         await sequelize.sync();
 
         // Xóa dữ liệu cũ
-        await Dataset.destroy({ where: {} });
-        await User.destroy({ where: {} });
+        await Dataset.destroy({ where: {}, truncate: { cascade: true } });
+        await User.destroy({ where: {}, truncate: { cascade: true } });
+
 
         console.log('✅ Cleaned old data');
         // Tạo provider mẫu
@@ -35,7 +36,7 @@ const seedDatabase = async () => {
         });
 
         // Tạo datasets mẫu
-    const sampleDatasets = [
+        const sampleDatasets = [
             // Hành vi lái xe
             {
                 title: 'Dữ liệu Hành vi Lái xe EV Sedan 2023',

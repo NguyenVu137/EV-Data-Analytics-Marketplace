@@ -2,7 +2,7 @@ const express = require("express");
 const User = require("../models/User");
 const router = express.Router();
 const { getMe, updateMe, deleteMe } = require("../controllers/userController");
-const auth = require("../middleware/auth"); // Đã sửa export, giờ sẽ là function
+const authenticateToken = require("../middleware/auth");
 
 // tạo user mới
 router.post("/", async (req, res) => {
@@ -25,8 +25,8 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.get("/me", auth, getMe);
-router.put("/me", auth, updateMe);
-router.delete("/me", auth, deleteMe);
+router.get("/me", authenticateToken, getMe);
+router.put("/me", authenticateToken, updateMe);
+router.delete("/me", authenticateToken, deleteMe);
 
 module.exports = router;

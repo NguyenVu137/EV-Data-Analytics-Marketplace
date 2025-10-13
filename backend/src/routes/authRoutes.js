@@ -4,7 +4,7 @@ const { register, login, verifyEmail, requestPasswordReset, googleAuth, verifyRe
 console.log('authController exports:', { register, login, verifyEmail, requestPasswordReset, googleAuth, verifyResetCode, googleRegisterWithUsername });
 
 router.post("/register", register);
-router.post("/login", login);
+router.post('/login', login);
 router.get("/verify-email", verifyEmail);
 router.post('/request-password-reset', requestPasswordReset);
 // router.post('/reset-password', resetPassword); // Chưa có hàm này, tạm thời bỏ qua
