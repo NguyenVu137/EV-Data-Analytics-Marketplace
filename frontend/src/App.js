@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ThemeProvider } from "./hooks/useTheme";
 import Navbar from "./components/Navbar";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
@@ -19,9 +20,10 @@ import VerifyResetCode from "./pages/VerifyResetCode";
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Navbar />
-        <Routes>
+      <ThemeProvider>
+        <Router>
+          <Navbar />
+          <Routes>
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route
@@ -57,7 +59,8 @@ function App() {
           <Route path="/verify-reset-code" element={<VerifyResetCode />} />
           <Route path="/" element={<DatasetExplorer />} />
         </Routes>
-      </Router>
+        </Router>
+      </ThemeProvider>
     </AuthProvider>
   );
 }

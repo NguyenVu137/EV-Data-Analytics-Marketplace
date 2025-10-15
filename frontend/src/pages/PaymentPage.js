@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import config from '../config';
 import { useAuth } from '../contexts/AuthContext';
 
 const PaymentPage = () => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { user, isLoggedIn } = useAuth();
+  const { isLoggedIn } = useAuth();
   const dataset = location.state?.dataset;
   const [processing, setProcessing] = useState(false);
 
